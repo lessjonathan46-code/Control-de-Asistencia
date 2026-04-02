@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Sistema Asistencia | Código Único</title>
+
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #f1f5f9;
+      font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      padding: 30px 20px;
+      color: #0f172a;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    /* header */
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #0f3b2c, #1e6f4c);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .header p {
+      color: #475569;
+      margin-top: 6px;
+    }
+
+    /* tarjetas */
+    .card {
+      background: white;
+      border-radius: 24px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+      padding: 1.8rem;
+      margin-bottom: 24px;
+      border: 1px solid #e2e8f0;
+      transition: all 0.2s;
+    }
+
+    .card-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-left: 4px solid #1e6f4c;
+      padding-left: 16px;
+    }
+
+    /* grids */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.2rem;
+      margin-bottom: 1.8rem;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    label {
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #475569;
+    }
+    input, select {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 16px;
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: 0.2s;
+    }
+    input:focus, select:focus {
+      border-color: #1e6f4c;
+      box-shadow: 0 0 0 3px rgba(30, 111, 76, 0.1);
+    }
+
+    button {
+      background: #1e6f4c;
+      color: white;
+      border: none;
+      border-radius: 40px;
+      padding: 10px 24px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.85rem;
+    }
+    button:hover {
+      background: #0f553a;
+      transform: translateY(-1px);
+    }
+    .btn-outline {
+      background: white;
+      border: 1px solid #cbd5e1;
+      color: #1e293b;
+    }
+    .btn-outline:hover {
+      background: #f8fafc;
+      border-color: #1e6f4c;
+      transform: none;
+    }
+
+    /* worker card */
+    .worker-card {
+      background: #f8fafc;
+      border-radius: 20px;
+      padding: 1rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      border: 1px solid #e2edf2;
+    }
+    .avatar {
+      width: 52px;
+      height: 52px;
+      background: #1e6f4c;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.4rem;
+      color: white;
+    }
+    .worker-info h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+    .code-badge {
+      background: #eef2ff;
+      padding: 4px 12px;
+      border-radius: 30px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #1e6f4c;
+      display: inline-block;
+      margin-top: 6px;
+    }
+
+    /* timbre grid */
+    .timbre-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+    }
+    .timbre-btn {
+      background: white;
+      border: 1px solid #cbd5e1;
+      color: #0f172a;
+      padding: 14px 6px;
+      text-align: center;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    .timbre-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      background: #f1f5f9;
+    }
+    .timbre-btn:hover:not(:disabled) {
+      border-color: #1e6f4c;
+      background: #f0fdf4;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    th, td {
+      padding: 12px 6px;
+      text-align: left;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .badge {
+      padding: 4px 12px;
+      border-radius: 30px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .badge-ingreso { background: #dcfce7; color: #15803d; }
+    .badge-salida-alm { background: #ffedd5; color: #b45309; }
+    .badge-ingreso-alm { background: #e0f2fe; color: #0369a1; }
+    .badge-salida { background: #fee2e2; color: #b91c1c; }
+
+    .stats-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    .stat-card {
+      background: #f8fafc;
+      padding: 12px 18px;
+      border-radius: 20px;
+      flex: 1;
+      text-align: center;
+      border: 1px solid #e2e8f0;
+    }
+    .stat-number {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #1e6f4c;
+    }
+
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      background: white;
+      border-left: 5px solid #1e6f4c;
+      padding: 12px 20px;
+      border-radius: 14px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+      font-weight: 500;
+    }
+    .toast.error { border-left-color: #dc2626; }
+    .toast.warning { border-left-color: #f59e0b; }
+
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: white;
+      padding: 28px;
+      border-radius: 28px;
+      max-width: 360px;
+      text-align: center;
+    }
+    .hidden { display: none; }
+
+    @media (max-width: 680px) {
+      .timbre-grid { grid-template-columns: 1fr 1fr; }
+      .card { padding: 1.2rem; }
+    }
+
+    /* status connection */
+    .conn-status {
+      background: #dcfce7;
+      border-radius: 20px;
+      padding: 8px 16px;
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #15803d;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>⏱️ Control de Asistencia</h1>
+    <p>Cédula única · Código personal · Timbres con control horario</p>
+  </div>
+
+  <!-- estado de conexión -->
+  <div class="conn-status" id="connStatus">
+    🔌 Conectando a Supabase...
+  </div>
+
+  <!-- pestañas simples -->
+  <div style="display: flex; gap: 12px; margin: 20px 0 12px; border-bottom: 1px solid #cbd5e1;">
+    <button class="tab-btn active" data-tab="tab-registro">📝 Registrar trabajador</button>
+    <button class="tab-btn" data-tab="tab-timbrado">🕒 Timbrado</button>
+    <button class="tab-btn" data-tab="tab-reporte">📄 Reporte PDF</button>
+  </div>
+
+  <!-- ========= PANEL REGISTRO ========= -->
+  <div id="tab-registro" class="tab-panel active">
+    <div class="card">
+      <div class="card-title">👤 Nuevo trabajador (cédula única + código automático)</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Cédula *</label><input id="regCedula" placeholder="0999123456"></div>
+        <div class="form-group"><label>Primer nombre *</label><input id="regNombre1" placeholder="María"></div>
+        <div class="form-group"><label>Segundo nombre *</label><input id="regNombre2" placeholder="Fernanda"></div>
+        <div class="form-group"><label>Primer apellido *</label><input id="regApellido1" placeholder="López"></div>
+        <div class="form-group"><label>Segundo apellido *</label><input id="regApellido2" placeholder="Gómez"></div>
+        <div class="form-group"><label>Área *</label>
+          <select id="regArea"><option>Administración</option><option>Operaciones</option><option>Tecnología</option><option>Ventas</option><option>Logística</option></select>
+        </div>
+      </div>
+      <button id="btnRegistrarTrabajador">✅ Registrar y generar código único</button>
+    </div>
+  </div>
+
+  <!-- ========= PANEL TIMBRADO ========= -->
+  <div id="tab-timbrado" class="tab-panel">
+    <div class="card">
+      <div class="card-title">🔍 Buscar por cédula o código único</div>
+      <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <input type="text" id="timbreBuscar" placeholder="Cédula o código único" style="flex:1">
+        <button id="btnBuscarTimbre">Buscar</button>
+      </div>
+      <div id="timbreWorkerInfo" style="display: none;"></div>
+      <div id="timbreBotones" style="display: none;">
+        <div class="timbre-grid">
+          <button class="timbre-btn" data-tipo="ingreso">✅ Ingreso</button>
+          <button class="timbre-btn" data-tipo="salida_almuerzo">🍽️ Salida almuerzo</button>
+          <button class="timbre-btn" data-tipo="ingreso_almuerzo">🔄 Ingreso almuerzo</button>
+          <button class="timbre-btn" data-tipo="salida">🏁 Salida final</button>
+        </div>
+        <div class="card-title" style="margin-top: 24px;">📋 Registros de hoy</div>
+        <div id="timbreRegistrosList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= PANEL REPORTE PDF ========= -->
+  <div id="tab-reporte" class="tab-panel">
+    <div class="card">
+      <div class="card-title">📄 Generar reporte diario</div>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+        <input type="text" id="reporteCedula" placeholder="Cédula o código único" style="flex:2">
+        <input type="date" id="reporteFecha" style="flex:1">
+        <button id="btnConsultarReporte">Consultar</button>
+      </div>
+      <div id="reporteInfo" style="display: none;"></div>
+      <div id="reporteStats" style="display: none;"></div>
+      <button id="btnGenerarPDF" style="margin-top: 20px; background:#2c3e66;" disabled>📥 Descargar PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<div id="modalConfirm" class="modal hidden">
+  <div class="modal-content">
+    <h3>⚠️ Fuera de horario límite</h3>
+    <p id="modalMensaje">La salida es después de 15:10. ¿Registrar igual?</p>
+    <div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px;">
+      <button id="modalCancelar" style="background:#94a3b8;">Cancelar</button>
+      <button id="modalAceptar" style="background:#dc2626;">Sí, registrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // --------------------------------------------------------------
+  // CONFIGURACIÓN SUPABASE (credenciales fijas)
+  // --------------------------------------------------------------
+  const SUPABASE_URL = "https://bsrcgvfckbaqsdrqehgc.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzcmNndmZja2JhcXNkcnFlaGdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwOTk0MTEsImV4cCI6MjA5MDY3NTQxMX0.7jXeHiglyJJJfzFZEIMuduPDQ-JhaIv7jZhNgaPTuKo";
+  
+  let supabaseClient = null;
+  let currentTrabajador = null;       // para timbrado
+  let currentReporte = null;          // para pdf
+  let pendingTimbre = null;            // almacena tipo cuando se requiere confirmación
+
+  // Elementos
+  const toastCont = document.getElementById('toastContainer');
+  const modal = document.getElementById('modalConfirm');
+  const modalMsg = document.getElementById('modalMensaje');
+  let modalResolve = null;
+
+  function toast(msg, type = 'success') {
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerText = msg;
+    toastCont.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  }
+
+  function showModal(message) {
+    modalMsg.innerText = message;
+    modal.classList.remove('hidden');
+    return new Promise(resolve => { modalResolve = resolve; });
+  }
+  document.getElementById('modalAceptar').onclick = () => {
+    modal.classList.add('hidden');
+    if (modalResolve) modalResolve(true);
+    modalResolve = null;
+  };
+  document.getElementById('modalCancelar').onclick = () => {
+    modal.classList.add('hidden');
+    if (modalResolve) modalResolve(false);
+    modalResolve = null;
+  };
+
+  // Helper zona horaria Ecuador (UTC-5)
+  function nowEcuador() {
+    return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Guayaquil' }));
+  }
+  function fechaHoyEcuador() {
+    const d = nowEcuador();
+    return d.toISOString().split('T')[0];
+  }
+  function horaFormato(isoString) {
+    if (!isoString) return '--:--';
+    const d = new Date(isoString);
+    return d.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Guayaquil' });
+  }
+
+  // Conexión automática a Supabase
+  async function conectarSupabase() {
+    try {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      // test de conexión
+      const { error } = await supabaseClient.from('trabajadores').select('id').limit(1);
+      if (error && error.code !== 'PGRST116') throw error;
+      document.getElementById('connStatus').innerHTML = '✅ Conectado a Supabase';
+      document.getElementById('connStatus').style.background = '#dcfce7';
+      document.getElementById('connStatus').style.color = '#15803d';
+      toast('Conexión exitosa a Supabase', 'success');
+      return true;
+    } catch (err) {
+      console.error(err);
+      document.getElementById('connStatus').innerHTML = '❌ Error de conexión - Verifica tu internet';
+      document.getElementById('connStatus').style.background = '#fee2e2';
+      document.getElementById('connStatus').style.color = '#b91c1c';
+      toast('Error de conexión: ' + err.message, 'error');
+      supabaseClient = null;
+      return false;
+    }
+  }
+
+  // generación de código único: 3 primeras del nombre1 + 3 primeras apellido1 + últimos 4 cédula
+  function generarCodigoUnico(cedula, nombre1, apellido1) {
+    const nPart = (nombre1 || '').substring(0, 3).toUpperCase();
+    const aPart = (apellido1 || '').substring(0, 3).toUpperCase();
+    const cedPart = (cedula || '').slice(-4);
+    return `${nPart}${aPart}${cedPart}`;
+  }
+
+  // REGISTRO TRABAJADOR
+  document.getElementById('btnRegistrarTrabajador').onclick = async () => {
+    if (!supabaseClient) { toast('Esperando conexión a Supabase...', 'error'); return; }
+    const cedula = document.getElementById('regCedula').value.trim();
+    const n1 = document.getElementById('regNombre1').value.trim();
+    const n2 = document.getElementById('regNombre2').value.trim();
+    const a1 = document.getElementById('regApellido1').value.trim();
+    const a2 = document.getElementById('regApellido2').value.trim();
+    const area = document.getElementById('regArea').value;
+    if (!cedula || !n1 || !n2 || !a1 || !a2 || !area) { toast('Todos los campos son obligatorios', 'error'); return; }
+
+    try {
+      // verificar cédula
+      const { data: exist } = await supabaseClient.from('trabajadores').select('cedula').eq('cedula', cedula).maybeSingle();
+      if (exist) { toast(`❌ La cédula ${cedula} ya existe`, 'error'); return; }
+
+      let codigo = generarCodigoUnico(cedula, n1, a1);
+      // verificar que el código no esté repetido (por si acaso)
+      const { data: codeExist } = await supabaseClient.from('trabajadores').select('codigo_unico').eq('codigo_unico', codigo).maybeSingle();
+      if (codeExist) codigo = `${codigo}${Math.floor(Math.random() * 90 + 10)}`;
+
+      const { error } = await supabaseClient.from('trabajadores').insert([{
+        cedula, nombre1: n1, nombre2: n2, apellido1: a1, apellido2: a2, area,
+        codigo_unico: codigo, fecha_registro: new Date().toISOString()
+      }]);
+      if (error) throw error;
+      toast(`✅ Trabajador registrado. Código único: ${codigo}`, 'success');
+      document.getElementById('regCedula').value = '';
+      document.getElementById('regNombre1').value = '';
+      document.getElementById('regNombre2').value = '';
+      document.getElementById('regApellido1').value = '';
+      document.getElementById('regApellido2').value = '';
+    } catch (err) { toast('Error: ' + err.message, 'error'); }
+  };
+
+  // BUSCAR TRABAJADOR PARA TIMBRADO (por cédula o código)
+  async function buscarTrabajadorPorCedulaOCodigo(valor) {
+    if (!supabaseClient) return null;
+    const { data, error } = await supabaseClient
+      .from('trabajadores')
+      .select('*')
+      .or(`cedula.eq.${valor},codigo_unico.eq.${valor}`)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+
+  async function cargarRegistrosHoy(cedula) {
+    const hoy = fechaHoyEcuador();
+    const { data, error } = await supabaseClient.from('asistencias').select('*').eq('cedula', cedula).eq('fecha', hoy).order('hora', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+  function renderRegistrosTabla(registros, containerId) {
+    const container = document.getElementById(containerId);
+    if (!registros.length) { container.innerHTML = '<p style="color:#475569;">Sin registros hoy.</p>'; return; }
+    const tiposMap = {
+      ingreso: ['badge-ingreso', 'Ingreso'],
+      salida_almuerzo: ['badge-salida-alm', 'Salida almuerzo'],
+      ingreso_almuerzo: ['badge-ingreso-alm', 'Ingreso almuerzo'],
+      salida: ['badge-salida', 'Salida final']
+    };
+    let html = '<table><thead><tr><th>Tipo</th><th>Hora</th><th>Observación</th></tr></thead><tbody>';
+    registros.forEach(r => {
+      const [clase, texto] = tiposMap[r.tipo] || ['', r.tipo];
+      html += `<tr><td><span class="badge ${clase}">${texto}</span></td><td>${horaFormato(r.hora)}</td><td>${r.observacion || '-'}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+
+  function actualizarBotonesSegunRegistros(registros) {
+    const tiposExistentes = registros.map(r => r.tipo);
+    const btns = document.querySelectorAll('.timbre-btn');
+    const habilitar = {
+      ingreso: !tiposExistentes.includes('ingreso'),
+      salida_almuerzo: tiposExistentes.includes('ingreso') && !tiposExistentes.includes('salida_almuerzo'),
+      ingreso_almuerzo: tiposExistentes.includes('salida_almuerzo') && !tiposExistentes.includes('ingreso_almuerzo'),
+      salida: tiposExistentes.includes('ingreso') && !tiposExistentes.includes('salida')
+    };
+    btns.forEach(btn => {
+      const tipo = btn.getAttribute('data-tipo');
+      btn.disabled = !habilitar[tipo];
+    });
+  }
+
+  document.getElementById('btnBuscarTimbre').onclick = async () => {
+    if (!supabaseClient) { toast('Esperando conexión a Supabase...', 'error'); return; }
+    const valor = document.getElementById('timbreBuscar').value.trim();
+    if (!valor) { toast('Ingrese cédula o código único', 'error'); return; }
+    try {
+      const trabajador = await buscarTrabajadorPorCedulaOCodigo(valor);
+      if (!trabajador) { toast('Trabajador no encontrado', 'error'); return; }
+      currentTrabajador = trabajador;
+      const avatarInicial = (trabajador.nombre1[0] + trabajador.apellido1[0]).toUpperCase();
+      document.getElementById('timbreWorkerInfo').innerHTML = `
+        <div class="worker-card">
+          <div class="avatar">${avatarInicial}</div>
+          <div class="worker-info">
+            <h3>${trabajador.nombre1} ${trabajador.nombre2} ${trabajador.apellido1} ${trabajador.apellido2}</h3>
+            <div>📌 Cédula: ${trabajador.cedula}</div>
+            <div class="code-badge">🔑 Código único: ${trabajador.codigo_unico}</div>
+            <div>🏢 ${trabajador.area}</div>
+          </div>
+        </div>
+      `;
+      document.getElementById('timbreWorkerInfo').style.display = 'block';
+      document.getElementById('timbreBotones').style.display = 'block';
+      const registros = await cargarRegistrosHoy(trabajador.cedula);
+      renderRegistrosTabla(registros, 'timbreRegistrosList');
+      actualizarBotonesSegunRegistros(registros);
+    } catch (err) { toast('Error: ' + err.message, 'error'); }
+  };
+
+  // TIMBRAR
+  async function ejecutarTimbre(tipo) {
+    if (!currentTrabajador) return;
+    const hoy = fechaHoyEcuador();
+    const ahora = nowEcuador();
+    const horaISO = ahora.toISOString();
+
+    // validar duplicado
+    const { data: dup } = await supabaseClient.from('asistencias').select('id').eq('cedula', currentTrabajador.cedula).eq('fecha', hoy).eq('tipo', tipo).maybeSingle();
+    if (dup) { toast(`Ya existe ${tipo} hoy`, 'warning'); return; }
+
+    let observacion = '';
+    if (tipo === 'salida') {
+      const horaActualNum = ahora.getHours() * 60 + ahora.getMinutes();
+      const limite = 15 * 60 + 10;
+      if (horaActualNum > limite) {
+        const confirmar = await showModal(`Son las ${horaFormato(horaISO)}. Límite 15:10. ¿Registrar salida?`);
+        if (!confirmar) return;
+        observacion = 'FUERA DE HORARIO (15:10)';
+      }
+    }
+
+    const { error } = await supabaseClient.from('asistencias').insert([{
+      cedula: currentTrabajador.cedula, fecha: hoy, tipo, hora: horaISO, observacion, created_at: horaISO
+    }]);
+    if (error) { toast('Error timbre: ' + error.message, 'error'); return; }
+    toast(`${tipo.replace('_', ' ')} registrado a las ${horaFormato(horaISO)}`);
+    // refrescar registros
+    const nuevosReg = await cargarRegistrosHoy(currentTrabajador.cedula);
+    renderRegistrosTabla(nuevosReg, 'timbreRegistrosList');
+    actualizarBotonesSegunRegistros(nuevosReg);
+  }
+
+  document.querySelectorAll('.timbre-btn').forEach(btn => {
+    btn.onclick = () => ejecutarTimbre(btn.getAttribute('data-tipo'));
+  });
+
+  // REPORTE PDF
+  document.getElementById('btnConsultarReporte').onclick = async () => {
+    if (!supabaseClient) { toast('Esperando conexión a Supabase...', 'error'); return; }
+    const valor = document.getElementById('reporteCedula').value.trim();
+    const fecha = document.getElementById('reporteFecha').value || fechaHoyEcuador();
+    if (!valor) { toast('Ingrese cédula o código único', 'error'); return; }
+    try {
+      const trabajador = await buscarTrabajadorPorCedulaOCodigo(valor);
+      if (!trabajador) { toast('Trabajador no existe', 'error'); return; }
+      const { data: registros } = await supabaseClient.from('asistencias').select('*').eq('cedula', trabajador.cedula).eq('fecha', fecha).order('hora');
+      currentReporte = { trabajador, registros: registros || [], fecha };
+      // mostrar info
+      const avatarInicial = (trabajador.nombre1[0] + trabajador.apellido1[0]).toUpperCase();
+      document.getElementById('reporteInfo').innerHTML = `
+        <div class="worker-card"><div class="avatar">${avatarInicial}</div><div><h3>${trabajador.nombre1} ${trabajador.nombre2} ${trabajador.apellido1} ${trabajador.apellido2}</h3>
+        <div>Cédula: ${trabajador.cedula} | Código: ${trabajador.codigo_unico}</div><div>Área: ${trabajador.area}</div></div></div>`;
+      // calcular horas
+      const ing = registros.find(r => r.tipo === 'ingreso')?.hora;
+      const salAlm = registros.find(r => r.tipo === 'salida_almuerzo')?.hora;
+      const ingAlm = registros.find(r => r.tipo === 'ingreso_almuerzo')?.hora;
+      const sal = registros.find(r => r.tipo === 'salida')?.hora;
+      let trabajoMs = 0, almuerzoMs = 0;
+      if (ing && salAlm) trabajoMs += new Date(salAlm) - new Date(ing);
+      if (ingAlm && sal) trabajoMs += new Date(sal) - new Date(ingAlm);
+      if (ing && sal && !salAlm && !ingAlm) trabajoMs = new Date(sal) - new Date(ing);
+      if (salAlm && ingAlm) almuerzoMs = new Date(ingAlm) - new Date(salAlm);
+      const fmtHoras = (ms) => ms <= 0 ? '0h 0m' : `${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m`;
+      document.getElementById('reporteStats').innerHTML = `
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-number">${horaFormato(ing) || '--'}</div><div>Ingreso</div></div>
+          <div class="stat-card"><div class="stat-number">${horaFormato(sal) || '--'}</div><div>Salida</div></div>
+          <div class="stat-card"><div class="stat-number">${fmtHoras(almuerzoMs)}</div><div>Almuerzo</div></div>
+          <div class="stat-card"><div class="stat-number">${fmtHoras(trabajoMs)}</div><div>Horas trabajadas</div></div>
+        </div>`;
+      document.getElementById('reporteInfo').style.display = 'block';
+      document.getElementById('reporteStats').style.display = 'block';
+      document.getElementById('btnGenerarPDF').disabled = false;
+    } catch (err) { toast('Error: ' + err.message, 'error'); }
+  };
+
+  // GENERAR PDF con jsPDF
+  document.getElementById('btnGenerarPDF').onclick = () => {
+    if (!currentReporte) return;
+    const { trabajador, registros, fecha } = currentReporte;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFillColor(30, 111, 76);
+    doc.rect(0, 0, 210, 35, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.text('REPORTE DE ASISTENCIA', 20, 20);
+    doc.setFontSize(10);
+    doc.text(`Fecha: ${fecha} (Ecuador GMT-5)`, 20, 30);
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
+    let y = 48;
+    doc.text(`Trabajador: ${trabajador.nombre1} ${trabajador.nombre2} ${trabajador.apellido1} ${trabajador.apellido2}`, 20, y); y += 7;
+    doc.text(`Cédula: ${trabajador.cedula}  |  Código único: ${trabajador.codigo_unico}`, 20, y); y += 7;
+    doc.text(`Área: ${trabajador.area}`, 20, y); y += 12;
+    doc.text('Registros del día:', 20, y); y += 6;
+    registros.forEach(r => {
+      if (y > 260) { doc.addPage(); y = 20; }
+      doc.text(`• ${r.tipo} : ${horaFormato(r.hora)} ${r.observacion ? `(${r.observacion})` : ''}`, 20, y);
+      y += 6;
+    });
+    // cálculos
+    const ing = registros.find(r => r.tipo === 'ingreso')?.hora;
+    const salAlm = registros.find(r => r.tipo === 'salida_almuerzo')?.hora;
+    const ingAlm = registros.find(r => r.tipo === 'ingreso_almuerzo')?.hora;
+    const sal = registros.find(r => r.tipo === 'salida')?.hora;
+    let trabajoMs = 0, almMs = 0;
+    if (ing && salAlm) trabajoMs += new Date(salAlm) - new Date(ing);
+    if (ingAlm && sal) trabajoMs += new Date(sal) - new Date(ingAlm);
+    if (ing && sal && !salAlm && !ingAlm) trabajoMs = new Date(sal) - new Date(ing);
+    if (salAlm && ingAlm) almMs = new Date(ingAlm) - new Date(salAlm);
+    const fmt = ms => ms <= 0 ? '0h 0m' : `${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m`;
+    y += 8;
+    doc.text(`Horas trabajadas: ${fmt(trabajoMs)}`, 20, y); y += 6;
+    doc.text(`Tiempo de almuerzo: ${fmt(almMs)}`, 20, y);
+    doc.save(`Asistencia_${trabajador.cedula}_${fecha}.pdf`);
+    toast('PDF generado correctamente');
+  };
+
+  // pestañas
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      const tabId = btn.getAttribute('data-tab');
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+    };
+  });
+  
+  // inicializar fecha reporte
+  document.getElementById('reporteFecha').value = fechaHoyEcuador();
+  
+  // auto conectar al cargar la página
+  window.onload = () => { conectarSupabase(); };
+</script>
+
+<!-- ************** INSTRUCCIONES SQL (CREAR TABLAS EN SUPABASE) ************** 
+-- Ejecutar en SQL Editor de Supabase:
+
+CREATE TABLE IF NOT EXISTS trabajadores (
+  id BIGSERIAL PRIMARY KEY,
+  cedula TEXT UNIQUE NOT NULL,
+  codigo_unico TEXT UNIQUE,
+  nombre1 TEXT NOT NULL,
+  nombre2 TEXT NOT NULL,
+  apellido1 TEXT NOT NULL,
+  apellido2 TEXT NOT NULL,
+  area TEXT NOT NULL,
+  fecha_registro TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_trabajadores_cedula ON trabajadores(cedula);
+CREATE INDEX IF NOT EXISTS idx_trabajadores_codigo ON trabajadores(codigo_unico);
+
+CREATE TABLE IF NOT EXISTS asistencias (
+  id BIGSERIAL PRIMARY KEY,
+  cedula TEXT NOT NULL REFERENCES trabajadores(cedula) ON DELETE CASCADE,
+  fecha DATE NOT NULL,
+  tipo TEXT NOT NULL CHECK (tipo IN ('ingreso','salida_almuerzo','ingreso_almuerzo','salida')),
+  hora TIMESTAMPTZ NOT NULL,
+  observacion TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(cedula, fecha, tipo)
+);
+CREATE INDEX idx_asistencias_cedula_fecha ON asistencias(cedula, fecha);
+-->
+</body>
+</html>
