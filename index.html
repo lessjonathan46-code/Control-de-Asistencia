@@ -47,6 +47,21 @@
       margin-top: 6px;
     }
 
+    /* reloj */
+    .clock-wrapper {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .live-clock {
+      display: inline-block;
+      background: #e6f7f0;
+      color: #1e6f4c;
+      padding: 8px 20px;
+      border-radius: 40px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
     /* tarjetas */
     .card {
       background: white;
@@ -88,6 +103,11 @@
       letter-spacing: 0.5px;
       color: #475569;
     }
+    .required::after {
+      content: "*";
+      color: #dc2626;
+      margin-left: 4px;
+    }
     input, select {
       background: #ffffff;
       border: 1px solid #cbd5e1;
@@ -117,15 +137,67 @@
       background: #0f553a;
       transform: translateY(-1px);
     }
-    .btn-outline {
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-secondary {
       background: white;
       border: 1px solid #cbd5e1;
       color: #1e293b;
     }
-    .btn-outline:hover {
+    .btn-secondary:hover {
       background: #f8fafc;
       border-color: #1e6f4c;
       transform: none;
+    }
+    .btn-full {
+      width: 100%;
+    }
+
+    /* tabs */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      background: white;
+      padding: 6px;
+      border-radius: 16px;
+      border: 1px solid #e2e8f0;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 12px 20px;
+      background: transparent;
+      border: none;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: all 0.2s;
+      color: #64748b;
+    }
+    .tab-btn.active {
+      background: #1e6f4c;
+      color: white;
+    }
+    .tab-btn:not(.active):hover {
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+
+    /* paneles */
+    .tab-panel {
+      display: none;
+      animation: fadeIn 0.25s ease;
+    }
+    .tab-panel.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     /* worker card */
@@ -182,6 +254,7 @@
       text-align: center;
       border-radius: 20px;
       font-weight: 600;
+      cursor: pointer;
     }
     .timbre-btn:disabled {
       opacity: 0.4;
@@ -191,6 +264,12 @@
     .timbre-btn:hover:not(:disabled) {
       border-color: #1e6f4c;
       background: #f0fdf4;
+      transform: translateY(-2px);
+    }
+    .timbre-btn .icon {
+      font-size: 24px;
+      display: block;
+      margin-bottom: 6px;
     }
 
     table {
@@ -275,21 +354,23 @@
     }
     .hidden { display: none; }
 
+    /* estado conexión */
+    .conn-status {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .conn-status.connected {
+      color: #15803d;
+    }
+    .conn-status.error {
+      color: #dc2626;
+    }
+
     @media (max-width: 680px) {
       .timbre-grid { grid-template-columns: 1fr 1fr; }
       .card { padding: 1.2rem; }
-    }
-
-    /* status connection */
-    .conn-status {
-      background: #dcfce7;
-      border-radius: 20px;
-      padding: 8px 16px;
-      text-align: center;
-      margin-bottom: 20px;
-      font-size: 0.85rem;
-      font-weight: 500;
-      color: #15803d;
     }
   </style>
 </head>
@@ -301,13 +382,16 @@
     <p>Cédula única · Código personal · Timbres con control horario</p>
   </div>
 
-  <!-- estado de conexión -->
-  <div class="conn-status" id="connStatus">
-    🔌 Conectando a Supabase...
+  <div class="clock-wrapper">
+    <div class="live-clock" id="live-clock">--:--:--</div>
   </div>
 
-  <!-- pestañas simples -->
-  <div style="display: flex; gap: 12px; margin: 20px 0 12px; border-bottom: 1px solid #cbd5e1;">
+  <div class="conn-status" id="connStatus">
+    <span>🔄 Conectando a Supabase...</span>
+  </div>
+
+  <!-- pestañas -->
+  <div class="tabs">
     <button class="tab-btn active" data-tab="tab-registro">📝 Registrar trabajador</button>
     <button class="tab-btn" data-tab="tab-timbrado">🕒 Timbrado</button>
     <button class="tab-btn" data-tab="tab-reporte">📄 Reporte PDF</button>
@@ -318,16 +402,16 @@
     <div class="card">
       <div class="card-title">👤 Nuevo trabajador (cédula única + código automático)</div>
       <div class="form-grid">
-        <div class="form-group"><label>Cédula *</label><input id="regCedula" placeholder="0999123456"></div>
-        <div class="form-group"><label>Primer nombre *</label><input id="regNombre1" placeholder="María"></div>
-        <div class="form-group"><label>Segundo nombre *</label><input id="regNombre2" placeholder="Fernanda"></div>
-        <div class="form-group"><label>Primer apellido *</label><input id="regApellido1" placeholder="López"></div>
-        <div class="form-group"><label>Segundo apellido *</label><input id="regApellido2" placeholder="Gómez"></div>
-        <div class="form-group"><label>Área *</label>
+        <div class="form-group"><label class="required">Cédula *</label><input id="regCedula" placeholder="0999123456"></div>
+        <div class="form-group"><label class="required">Primer nombre *</label><input id="regNombre1" placeholder="María"></div>
+        <div class="form-group"><label class="required">Segundo nombre *</label><input id="regNombre2" placeholder="Fernanda"></div>
+        <div class="form-group"><label class="required">Primer apellido *</label><input id="regApellido1" placeholder="López"></div>
+        <div class="form-group"><label class="required">Segundo apellido *</label><input id="regApellido2" placeholder="Gómez"></div>
+        <div class="form-group"><label class="required">Área *</label>
           <select id="regArea"><option>Administración</option><option>Operaciones</option><option>Tecnología</option><option>Ventas</option><option>Logística</option></select>
         </div>
       </div>
-      <button id="btnRegistrarTrabajador">✅ Registrar y generar código único</button>
+      <button id="btnRegistrarTrabajador" class="btn-full">✅ Registrar y generar código único</button>
     </div>
   </div>
 
@@ -342,10 +426,10 @@
       <div id="timbreWorkerInfo" style="display: none;"></div>
       <div id="timbreBotones" style="display: none;">
         <div class="timbre-grid">
-          <button class="timbre-btn" data-tipo="ingreso">✅ Ingreso</button>
-          <button class="timbre-btn" data-tipo="salida_almuerzo">🍽️ Salida almuerzo</button>
-          <button class="timbre-btn" data-tipo="ingreso_almuerzo">🔄 Ingreso almuerzo</button>
-          <button class="timbre-btn" data-tipo="salida">🏁 Salida final</button>
+          <button class="timbre-btn" data-tipo="ingreso"><span class="icon">✅</span>Ingreso</button>
+          <button class="timbre-btn" data-tipo="salida_almuerzo"><span class="icon">🍽️</span>Salida almuerzo</button>
+          <button class="timbre-btn" data-tipo="ingreso_almuerzo"><span class="icon">🔄</span>Ingreso almuerzo</button>
+          <button class="timbre-btn" data-tipo="salida"><span class="icon">🏁</span>Salida final</button>
         </div>
         <div class="card-title" style="margin-top: 24px;">📋 Registros de hoy</div>
         <div id="timbreRegistrosList"></div>
@@ -364,7 +448,7 @@
       </div>
       <div id="reporteInfo" style="display: none;"></div>
       <div id="reporteStats" style="display: none;"></div>
-      <button id="btnGenerarPDF" style="margin-top: 20px; background:#2c3e66;" disabled>📥 Descargar PDF</button>
+      <button id="btnGenerarPDF" style="margin-top: 20px; background:#2c3e66;" disabled class="btn-full">📥 Descargar PDF</button>
     </div>
   </div>
 </div>
@@ -382,21 +466,20 @@
 </div>
 
 <script>
-  // --------------------------------------------------------------
-  // CONFIGURACIÓN SUPABASE (credenciales fijas)
-  // --------------------------------------------------------------
+  // ==================== CREDENCIALES SUPABASE INTEGRADAS ====================
   const SUPABASE_URL = "https://bsrcgvfckbaqsdrqehgc.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzcmNndmZja2JhcXNkcnFlaGdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwOTk0MTEsImV4cCI6MjA5MDY3NTQxMX0.7jXeHiglyJJJfzFZEIMuduPDQ-JhaIv7jZhNgaPTuKo";
-  
+
+  // Inicializar cliente Supabase automáticamente
   let supabaseClient = null;
-  let currentTrabajador = null;       // para timbrado
-  let currentReporte = null;          // para pdf
-  let pendingTimbre = null;            // almacena tipo cuando se requiere confirmación
+  let currentTrabajador = null;
+  let currentReporte = null;
 
   // Elementos
   const toastCont = document.getElementById('toastContainer');
   const modal = document.getElementById('modalConfirm');
   const modalMsg = document.getElementById('modalMensaje');
+  const connStatusSpan = document.getElementById('connStatus');
   let modalResolve = null;
 
   function toast(msg, type = 'success') {
@@ -437,23 +520,31 @@
     return d.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Guayaquil' });
   }
 
+  // Reloj en vivo
+  function actualizarReloj() {
+    const now = nowEcuador();
+    const hora = now.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    const fecha = now.toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById('live-clock').textContent = `${fecha.toUpperCase()} · ${hora}`;
+  }
+  actualizarReloj();
+  setInterval(actualizarReloj, 1000);
+
   // Conexión automática a Supabase
   async function conectarSupabase() {
     try {
       supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      // test de conexión
+      // Probar conexión
       const { error } = await supabaseClient.from('trabajadores').select('id').limit(1);
       if (error && error.code !== 'PGRST116') throw error;
-      document.getElementById('connStatus').innerHTML = '✅ Conectado a Supabase';
-      document.getElementById('connStatus').style.background = '#dcfce7';
-      document.getElementById('connStatus').style.color = '#15803d';
+      connStatusSpan.innerHTML = '✅ Conectado a Supabase';
+      connStatusSpan.className = 'conn-status connected';
       toast('Conexión exitosa a Supabase', 'success');
       return true;
     } catch (err) {
       console.error(err);
-      document.getElementById('connStatus').innerHTML = '❌ Error de conexión - Verifica tu internet';
-      document.getElementById('connStatus').style.background = '#fee2e2';
-      document.getElementById('connStatus').style.color = '#b91c1c';
+      connStatusSpan.innerHTML = '❌ Error de conexión a Supabase. Verifica las tablas.';
+      connStatusSpan.className = 'conn-status error';
       toast('Error de conexión: ' + err.message, 'error');
       supabaseClient = null;
       return false;
@@ -470,7 +561,7 @@
 
   // REGISTRO TRABAJADOR
   document.getElementById('btnRegistrarTrabajador').onclick = async () => {
-    if (!supabaseClient) { toast('Esperando conexión a Supabase...', 'error'); return; }
+    if (!supabaseClient) { toast('Conectando a Supabase...', 'error'); return; }
     const cedula = document.getElementById('regCedula').value.trim();
     const n1 = document.getElementById('regNombre1').value.trim();
     const n2 = document.getElementById('regNombre2').value.trim();
@@ -479,13 +570,17 @@
     const area = document.getElementById('regArea').value;
     if (!cedula || !n1 || !n2 || !a1 || !a2 || !area) { toast('Todos los campos son obligatorios', 'error'); return; }
 
+    const btn = document.getElementById('btnRegistrarTrabajador');
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Registrando...';
+
     try {
       // verificar cédula
       const { data: exist } = await supabaseClient.from('trabajadores').select('cedula').eq('cedula', cedula).maybeSingle();
       if (exist) { toast(`❌ La cédula ${cedula} ya existe`, 'error'); return; }
 
       let codigo = generarCodigoUnico(cedula, n1, a1);
-      // verificar que el código no esté repetido (por si acaso)
+      // verificar que el código no esté repetido
       const { data: codeExist } = await supabaseClient.from('trabajadores').select('codigo_unico').eq('codigo_unico', codigo).maybeSingle();
       if (codeExist) codigo = `${codigo}${Math.floor(Math.random() * 90 + 10)}`;
 
@@ -494,13 +589,17 @@
         codigo_unico: codigo, fecha_registro: new Date().toISOString()
       }]);
       if (error) throw error;
-      toast(`✅ Trabajador registrado. Código único: ${codigo}`, 'success');
+      toast(`✅ Trabajador registrado. Código único: ${codigo}`, 'success', 5000);
       document.getElementById('regCedula').value = '';
       document.getElementById('regNombre1').value = '';
       document.getElementById('regNombre2').value = '';
       document.getElementById('regApellido1').value = '';
       document.getElementById('regApellido2').value = '';
     } catch (err) { toast('Error: ' + err.message, 'error'); }
+    finally {
+      btn.disabled = false;
+      btn.innerHTML = '✅ Registrar y generar código único';
+    }
   };
 
   // BUSCAR TRABAJADOR PARA TIMBRADO (por cédula o código)
@@ -524,12 +623,12 @@
 
   function renderRegistrosTabla(registros, containerId) {
     const container = document.getElementById(containerId);
-    if (!registros.length) { container.innerHTML = '<p style="color:#475569;">Sin registros hoy.</p>'; return; }
+    if (!registros.length) { container.innerHTML = '<p style="color:#475569; text-align:center; padding:20px;">📭 Sin registros hoy</p>'; return; }
     const tiposMap = {
-      ingreso: ['badge-ingreso', 'Ingreso'],
-      salida_almuerzo: ['badge-salida-alm', 'Salida almuerzo'],
-      ingreso_almuerzo: ['badge-ingreso-alm', 'Ingreso almuerzo'],
-      salida: ['badge-salida', 'Salida final']
+      ingreso: ['badge-ingreso', '✅ Ingreso'],
+      salida_almuerzo: ['badge-salida-alm', '🍽️ Salida almuerzo'],
+      ingreso_almuerzo: ['badge-ingreso-alm', '🔄 Ingreso almuerzo'],
+      salida: ['badge-salida', '🏁 Salida final']
     };
     let html = '<table><thead><tr><th>Tipo</th><th>Hora</th><th>Observación</th></tr></thead><tbody>';
     registros.forEach(r => {
@@ -542,7 +641,7 @@
 
   function actualizarBotonesSegunRegistros(registros) {
     const tiposExistentes = registros.map(r => r.tipo);
-    const btns = document.querySelectorAll('.timbre-btn');
+    const btns = document.querySelectorAll('#timbreBotones .timbre-btn');
     const habilitar = {
       ingreso: !tiposExistentes.includes('ingreso'),
       salida_almuerzo: tiposExistentes.includes('ingreso') && !tiposExistentes.includes('salida_almuerzo'),
@@ -556,7 +655,7 @@
   }
 
   document.getElementById('btnBuscarTimbre').onclick = async () => {
-    if (!supabaseClient) { toast('Esperando conexión a Supabase...', 'error'); return; }
+    if (!supabaseClient) { toast('Conectando a Supabase...', 'error'); return; }
     const valor = document.getElementById('timbreBuscar').value.trim();
     if (!valor) { toast('Ingrese cédula o código único', 'error'); return; }
     try {
@@ -586,13 +685,15 @@
   // TIMBRAR
   async function ejecutarTimbre(tipo) {
     if (!currentTrabajador) return;
+    if (!supabaseClient) { toast('Conectando a Supabase...', 'error'); return; }
+    
     const hoy = fechaHoyEcuador();
     const ahora = nowEcuador();
     const horaISO = ahora.toISOString();
 
     // validar duplicado
     const { data: dup } = await supabaseClient.from('asistencias').select('id').eq('cedula', currentTrabajador.cedula).eq('fecha', hoy).eq('tipo', tipo).maybeSingle();
-    if (dup) { toast(`Ya existe ${tipo} hoy`, 'warning'); return; }
+    if (dup) { toast(`⚠️ Ya existe ${tipo} hoy`, 'warning'); return; }
 
     let observacion = '';
     if (tipo === 'salida') {
@@ -609,20 +710,24 @@
       cedula: currentTrabajador.cedula, fecha: hoy, tipo, hora: horaISO, observacion, created_at: horaISO
     }]);
     if (error) { toast('Error timbre: ' + error.message, 'error'); return; }
-    toast(`${tipo.replace('_', ' ')} registrado a las ${horaFormato(horaISO)}`);
+    
+    const tipoLabel = { ingreso: 'Ingreso', salida_almuerzo: 'Salida almuerzo', ingreso_almuerzo: 'Ingreso almuerzo', salida: 'Salida final' }[tipo];
+    toast(`✅ ${tipoLabel} registrado a las ${horaFormato(horaISO)}`);
+    
     // refrescar registros
     const nuevosReg = await cargarRegistrosHoy(currentTrabajador.cedula);
     renderRegistrosTabla(nuevosReg, 'timbreRegistrosList');
     actualizarBotonesSegunRegistros(nuevosReg);
   }
 
-  document.querySelectorAll('.timbre-btn').forEach(btn => {
+  // Asignar eventos a botones de timbre
+  document.querySelectorAll('#timbreBotones .timbre-btn').forEach(btn => {
     btn.onclick = () => ejecutarTimbre(btn.getAttribute('data-tipo'));
   });
 
   // REPORTE PDF
   document.getElementById('btnConsultarReporte').onclick = async () => {
-    if (!supabaseClient) { toast('Esperando conexión a Supabase...', 'error'); return; }
+    if (!supabaseClient) { toast('Conectando a Supabase...', 'error'); return; }
     const valor = document.getElementById('reporteCedula').value.trim();
     const fecha = document.getElementById('reporteFecha').value || fechaHoyEcuador();
     if (!valor) { toast('Ingrese cédula o código único', 'error'); return; }
@@ -631,11 +736,12 @@
       if (!trabajador) { toast('Trabajador no existe', 'error'); return; }
       const { data: registros } = await supabaseClient.from('asistencias').select('*').eq('cedula', trabajador.cedula).eq('fecha', fecha).order('hora');
       currentReporte = { trabajador, registros: registros || [], fecha };
-      // mostrar info
+      
       const avatarInicial = (trabajador.nombre1[0] + trabajador.apellido1[0]).toUpperCase();
       document.getElementById('reporteInfo').innerHTML = `
         <div class="worker-card"><div class="avatar">${avatarInicial}</div><div><h3>${trabajador.nombre1} ${trabajador.nombre2} ${trabajador.apellido1} ${trabajador.apellido2}</h3>
         <div>Cédula: ${trabajador.cedula} | Código: ${trabajador.codigo_unico}</div><div>Área: ${trabajador.area}</div></div></div>`;
+      
       // calcular horas
       const ing = registros.find(r => r.tipo === 'ingreso')?.hora;
       const salAlm = registros.find(r => r.tipo === 'salida_almuerzo')?.hora;
@@ -682,7 +788,8 @@
     doc.text('Registros del día:', 20, y); y += 6;
     registros.forEach(r => {
       if (y > 260) { doc.addPage(); y = 20; }
-      doc.text(`• ${r.tipo} : ${horaFormato(r.hora)} ${r.observacion ? `(${r.observacion})` : ''}`, 20, y);
+      const tipoLabel = { ingreso: 'Ingreso', salida_almuerzo: 'Salida almuerzo', ingreso_almuerzo: 'Ingreso almuerzo', salida: 'Salida final' }[r.tipo] || r.tipo;
+      doc.text(`• ${tipoLabel} : ${horaFormato(r.hora)} ${r.observacion ? `(${r.observacion})` : ''}`, 20, y);
       y += 6;
     });
     // cálculos
@@ -714,10 +821,10 @@
     };
   });
   
-  // inicializar fecha reporte
+  // inicializar fecha reporte y conexión
   document.getElementById('reporteFecha').value = fechaHoyEcuador();
   
-  // auto conectar al cargar la página
+  // Conectar automáticamente al cargar la página
   window.onload = () => { conectarSupabase(); };
 </script>
 
