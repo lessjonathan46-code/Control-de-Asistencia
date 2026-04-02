@@ -272,6 +272,7 @@
       margin-bottom: 6px;
     }
 
+    /* tablas */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -281,6 +282,11 @@
       padding: 12px 6px;
       text-align: left;
       border-bottom: 1px solid #e2e8f0;
+    }
+    th {
+      background: #f8fafc;
+      font-weight: 600;
+      color: #475569;
     }
     .badge {
       padding: 4px 12px;
@@ -292,6 +298,53 @@
     .badge-salida-alm { background: #ffedd5; color: #b45309; }
     .badge-ingreso-alm { background: #e0f2fe; color: #0369a1; }
     .badge-salida { background: #fee2e2; color: #b91c1c; }
+
+    /* histórico del mes */
+    .historico-container {
+      margin-top: 28px;
+      border-top: 2px solid #e2e8f0;
+      padding-top: 20px;
+    }
+    .historico-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #1e6f4c;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mes-navegacion {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .mes-navegacion button {
+      padding: 6px 16px;
+      font-size: 0.8rem;
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+    .mes-navegacion button:hover {
+      background: #1e6f4c;
+      color: white;
+    }
+    .mes-actual {
+      font-weight: 600;
+      background: #e6f7f0;
+      padding: 6px 16px;
+      border-radius: 30px;
+    }
+    .resumen-dia {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .dia-completo {
+      background: #f0fdf4;
+    }
 
     .stats-row {
       display: flex;
@@ -368,6 +421,12 @@
       color: #dc2626;
     }
 
+    /* scroll para histórico */
+    .historico-scroll {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
     @media (max-width: 680px) {
       .timbre-grid { grid-template-columns: 1fr 1fr; }
       .card { padding: 1.2rem; }
@@ -433,6 +492,20 @@
         </div>
         <div class="card-title" style="margin-top: 24px;">📋 Registros de hoy</div>
         <div id="timbreRegistrosList"></div>
+
+        <!-- NUEVO: HISTÓRICO DEL MES -->
+        <div class="historico-container" id="historicoContainer" style="display: none;">
+          <div class="historico-title">
+            📅 Histórico del mes
+            <span style="font-size: 0.8rem; font-weight: normal;">(todos los días timbrados)</span>
+          </div>
+          <div class="mes-navegacion">
+            <button id="btnMesAnterior" class="btn-secondary">◀ Mes anterior</button>
+            <span id="mesActualLabel" class="mes-actual"></span>
+            <button id="btnMesSiguiente" class="btn-secondary">Mes siguiente ▶</button>
+          </div>
+          <div id="historicoList" class="historico-scroll"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -474,6 +547,7 @@
   let supabaseClient = null;
   let currentTrabajador = null;
   let currentReporte = null;
+  let historicoMesActual = new Date(); // para navegación del histórico
 
   // Elementos
   const toastCont = document.getElementById('toastContainer');
@@ -519,6 +593,11 @@
     const d = new Date(isoString);
     return d.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Guayaquil' });
   }
+  function fechaFormato(fechaStr) {
+    if (!fechaStr) return '';
+    const d = new Date(fechaStr + 'T12:00:00');
+    return d.toLocaleDateString('es-EC', { day: '2-digit', month: 'short', weekday: 'short', timeZone: 'America/Guayaquil' });
+  }
 
   // Reloj en vivo
   function actualizarReloj() {
@@ -534,7 +613,6 @@
   async function conectarSupabase() {
     try {
       supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      // Probar conexión
       const { error } = await supabaseClient.from('trabajadores').select('id').limit(1);
       if (error && error.code !== 'PGRST116') throw error;
       connStatusSpan.innerHTML = '✅ Conectado a Supabase';
@@ -551,7 +629,7 @@
     }
   }
 
-  // generación de código único: 3 primeras del nombre1 + 3 primeras apellido1 + últimos 4 cédula
+  // generación de código único
   function generarCodigoUnico(cedula, nombre1, apellido1) {
     const nPart = (nombre1 || '').substring(0, 3).toUpperCase();
     const aPart = (apellido1 || '').substring(0, 3).toUpperCase();
@@ -575,12 +653,10 @@
     btn.innerHTML = '⏳ Registrando...';
 
     try {
-      // verificar cédula
       const { data: exist } = await supabaseClient.from('trabajadores').select('cedula').eq('cedula', cedula).maybeSingle();
       if (exist) { toast(`❌ La cédula ${cedula} ya existe`, 'error'); return; }
 
       let codigo = generarCodigoUnico(cedula, n1, a1);
-      // verificar que el código no esté repetido
       const { data: codeExist } = await supabaseClient.from('trabajadores').select('codigo_unico').eq('codigo_unico', codigo).maybeSingle();
       if (codeExist) codigo = `${codigo}${Math.floor(Math.random() * 90 + 10)}`;
 
@@ -602,7 +678,7 @@
     }
   };
 
-  // BUSCAR TRABAJADOR PARA TIMBRADO (por cédula o código)
+  // BUSCAR TRABAJADOR
   async function buscarTrabajadorPorCedulaOCodigo(valor) {
     if (!supabaseClient) return null;
     const { data, error } = await supabaseClient
@@ -619,6 +695,111 @@
     const { data, error } = await supabaseClient.from('asistencias').select('*').eq('cedula', cedula).eq('fecha', hoy).order('hora', { ascending: true });
     if (error) throw error;
     return data || [];
+  }
+
+  // NUEVA FUNCIÓN: Cargar histórico del mes
+  async function cargarHistoricoMes(cedula, year, month) {
+    if (!supabaseClient) return [];
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
+    const { data, error } = await supabaseClient
+      .from('asistencias')
+      .select('*')
+      .eq('cedula', cedula)
+      .gte('fecha', startDate)
+      .lte('fecha', endDate)
+      .order('fecha', { ascending: true })
+      .order('hora', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+  // Agrupar registros por día y calcular resumen
+  function agruparRegistrosPorDia(registros) {
+    const diasMap = new Map();
+    registros.forEach(r => {
+      if (!diasMap.has(r.fecha)) {
+        diasMap.set(r.fecha, []);
+      }
+      diasMap.get(r.fecha).push(r);
+    });
+    
+    const resultado = [];
+    for (const [fecha, regs] of diasMap) {
+      const ingreso = regs.find(r => r.tipo === 'ingreso')?.hora;
+      const salidaAlm = regs.find(r => r.tipo === 'salida_almuerzo')?.hora;
+      const ingresoAlm = regs.find(r => r.tipo === 'ingreso_almuerzo')?.hora;
+      const salida = regs.find(r => r.tipo === 'salida')?.hora;
+      
+      let totalMs = 0;
+      if (ingreso && salidaAlm) totalMs += new Date(salidaAlm) - new Date(ingreso);
+      if (ingresoAlm && salida) totalMs += new Date(salida) - new Date(ingresoAlm);
+      if (ingreso && salida && !salidaAlm && !ingresoAlm) totalMs = new Date(salida) - new Date(ingreso);
+      
+      let almuerzoMs = 0;
+      if (salidaAlm && ingresoAlm) almuerzoMs = new Date(ingresoAlm) - new Date(salidaAlm);
+      
+      const fmtHoras = (ms) => ms <= 0 ? '--' : `${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m`;
+      
+      resultado.push({
+        fecha,
+        registros: regs,
+        ingreso,
+        salidaAlm,
+        ingresoAlm,
+        salida,
+        totalHoras: fmtHoras(totalMs),
+        tiempoAlmuerzo: fmtHoras(almuerzoMs),
+        completo: ingreso && salida
+      });
+    }
+    return resultado.sort((a, b) => a.fecha.localeCompare(b.fecha));
+  }
+
+  function renderHistorico(registrosAgrupados, year, month) {
+    const container = document.getElementById('historicoList');
+    if (!registrosAgrupados.length) {
+      container.innerHTML = '<p style="color:#64748b; text-align:center; padding:20px;">📭 No hay registros en este mes</p>';
+      return;
+    }
+    
+    let html = `<table style="width:100%">
+      <thead>
+        <tr><th>Fecha</th><th>Ingreso</th><th>Salida Almuerzo</th><th>Ingreso Almuerzo</th><th>Salida Final</th><th>Horas Trabajadas</th><th>Almuerzo</th></tr>
+      </thead>
+      <tbody>`;
+    
+    registrosAgrupados.forEach(dia => {
+      const claseFila = dia.completo ? 'dia-completo' : '';
+      html += `<tr class="${claseFila}">
+        <td><strong>${fechaFormato(dia.fecha)}</strong></td>
+        <td>${horaFormato(dia.ingreso) || '--'}</td>
+        <td>${horaFormato(dia.salidaAlm) || '--'}</td>
+        <td>${horaFormato(dia.ingresoAlm) || '--'}</td>
+        <td>${horaFormato(dia.salida) || '--'}</td>
+        <td style="font-weight:600; color:#1e6f4c;">${dia.totalHoras}</td>
+        <td>${dia.tiempoAlmuerzo}</td>
+      </tr>`;
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+
+  async function actualizarHistorico(cedula) {
+    const year = historicoMesActual.getFullYear();
+    const month = historicoMesActual.getMonth() + 1;
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    document.getElementById('mesActualLabel').textContent = `${meses[month-1]} ${year}`;
+    
+    try {
+      const registros = await cargarHistoricoMes(cedula, year, month);
+      const agrupados = agruparRegistrosPorDia(registros);
+      renderHistorico(agrupados, year, month);
+    } catch (err) {
+      console.error(err);
+      document.getElementById('historicoList').innerHTML = '<p style="color:#dc2626;">Error cargando histórico</p>';
+    }
   }
 
   function renderRegistrosTabla(registros, containerId) {
@@ -676,9 +857,26 @@
       `;
       document.getElementById('timbreWorkerInfo').style.display = 'block';
       document.getElementById('timbreBotones').style.display = 'block';
+      
       const registros = await cargarRegistrosHoy(trabajador.cedula);
       renderRegistrosTabla(registros, 'timbreRegistrosList');
       actualizarBotonesSegunRegistros(registros);
+      
+      // Mostrar histórico y cargar datos del mes actual
+      historicoMesActual = new Date();
+      document.getElementById('historicoContainer').style.display = 'block';
+      await actualizarHistorico(trabajador.cedula);
+      
+      // Configurar navegación del histórico
+      document.getElementById('btnMesAnterior').onclick = async () => {
+        historicoMesActual.setMonth(historicoMesActual.getMonth() - 1);
+        await actualizarHistorico(trabajador.cedula);
+      };
+      document.getElementById('btnMesSiguiente').onclick = async () => {
+        historicoMesActual.setMonth(historicoMesActual.getMonth() + 1);
+        await actualizarHistorico(trabajador.cedula);
+      };
+      
     } catch (err) { toast('Error: ' + err.message, 'error'); }
   };
 
@@ -691,7 +889,6 @@
     const ahora = nowEcuador();
     const horaISO = ahora.toISOString();
 
-    // validar duplicado
     const { data: dup } = await supabaseClient.from('asistencias').select('id').eq('cedula', currentTrabajador.cedula).eq('fecha', hoy).eq('tipo', tipo).maybeSingle();
     if (dup) { toast(`⚠️ Ya existe ${tipo} hoy`, 'warning'); return; }
 
@@ -714,13 +911,14 @@
     const tipoLabel = { ingreso: 'Ingreso', salida_almuerzo: 'Salida almuerzo', ingreso_almuerzo: 'Ingreso almuerzo', salida: 'Salida final' }[tipo];
     toast(`✅ ${tipoLabel} registrado a las ${horaFormato(horaISO)}`);
     
-    // refrescar registros
     const nuevosReg = await cargarRegistrosHoy(currentTrabajador.cedula);
     renderRegistrosTabla(nuevosReg, 'timbreRegistrosList');
     actualizarBotonesSegunRegistros(nuevosReg);
+    
+    // Actualizar histórico después de timbrar
+    await actualizarHistorico(currentTrabajador.cedula);
   }
 
-  // Asignar eventos a botones de timbre
   document.querySelectorAll('#timbreBotones .timbre-btn').forEach(btn => {
     btn.onclick = () => ejecutarTimbre(btn.getAttribute('data-tipo'));
   });
@@ -742,7 +940,6 @@
         <div class="worker-card"><div class="avatar">${avatarInicial}</div><div><h3>${trabajador.nombre1} ${trabajador.nombre2} ${trabajador.apellido1} ${trabajador.apellido2}</h3>
         <div>Cédula: ${trabajador.cedula} | Código: ${trabajador.codigo_unico}</div><div>Área: ${trabajador.area}</div></div></div>`;
       
-      // calcular horas
       const ing = registros.find(r => r.tipo === 'ingreso')?.hora;
       const salAlm = registros.find(r => r.tipo === 'salida_almuerzo')?.hora;
       const ingAlm = registros.find(r => r.tipo === 'ingreso_almuerzo')?.hora;
@@ -766,7 +963,7 @@
     } catch (err) { toast('Error: ' + err.message, 'error'); }
   };
 
-  // GENERAR PDF con jsPDF
+  // GENERAR PDF
   document.getElementById('btnGenerarPDF').onclick = () => {
     if (!currentReporte) return;
     const { trabajador, registros, fecha } = currentReporte;
@@ -792,7 +989,6 @@
       doc.text(`• ${tipoLabel} : ${horaFormato(r.hora)} ${r.observacion ? `(${r.observacion})` : ''}`, 20, y);
       y += 6;
     });
-    // cálculos
     const ing = registros.find(r => r.tipo === 'ingreso')?.hora;
     const salAlm = registros.find(r => r.tipo === 'salida_almuerzo')?.hora;
     const ingAlm = registros.find(r => r.tipo === 'ingreso_almuerzo')?.hora;
@@ -821,16 +1017,11 @@
     };
   });
   
-  // inicializar fecha reporte y conexión
   document.getElementById('reporteFecha').value = fechaHoyEcuador();
-  
-  // Conectar automáticamente al cargar la página
   window.onload = () => { conectarSupabase(); };
 </script>
 
-<!-- ************** INSTRUCCIONES SQL (CREAR TABLAS EN SUPABASE) ************** 
--- Ejecutar en SQL Editor de Supabase:
-
+<!-- ************** INSTRUCCIONES SQL ************** 
 CREATE TABLE IF NOT EXISTS trabajadores (
   id BIGSERIAL PRIMARY KEY,
   cedula TEXT UNIQUE NOT NULL,
@@ -842,8 +1033,6 @@ CREATE TABLE IF NOT EXISTS trabajadores (
   area TEXT NOT NULL,
   fecha_registro TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_trabajadores_cedula ON trabajadores(cedula);
-CREATE INDEX IF NOT EXISTS idx_trabajadores_codigo ON trabajadores(codigo_unico);
 
 CREATE TABLE IF NOT EXISTS asistencias (
   id BIGSERIAL PRIMARY KEY,
@@ -855,7 +1044,6 @@ CREATE TABLE IF NOT EXISTS asistencias (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(cedula, fecha, tipo)
 );
-CREATE INDEX idx_asistencias_cedula_fecha ON asistencias(cedula, fecha);
 -->
 </body>
 </html>
